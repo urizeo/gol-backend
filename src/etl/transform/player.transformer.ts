@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { FlagResolverService } from './flag-resolver.service';
 
 export interface RawEspnAthlete {
   id: number | string;
@@ -42,6 +43,8 @@ export interface TransformedPlayer {
 
 @Injectable()
 export class PlayerTransformer {
+  constructor(private readonly flagResolver: FlagResolverService) {}
+
   transform(
     raw: RawEspnAthlete,
     resolveRef?: (ref: any) => Promise<any>,
@@ -66,7 +69,9 @@ export class PlayerTransformer {
       age: raw.age || undefined,
       dateOfBirth: raw.dateOfBirth || undefined,
       citizenship: raw.citizenship || undefined,
-      flagUrl: raw.flag?.href || undefined,
+      flagUrl: raw.flag?.href
+        ? this.flagResolver.resolveFlagUrl(raw.flag.href)
+        : undefined,
     };
   }
 

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { FlagResolverService } from './flag-resolver.service';
 
 export interface RawEspnTeam {
   id: number | string;
@@ -29,6 +30,8 @@ export interface TransformedTeam {
 
 @Injectable()
 export class TeamTransformer {
+  constructor(private readonly flagResolver: FlagResolverService) {}
+
   transform(raw: RawEspnTeam): TransformedTeam {
     return {
       id: Number(raw.id),
@@ -52,6 +55,7 @@ export class TeamTransformer {
   private extractLogo(logos: any[] | undefined, rel: string): string | null {
     if (!logos || !Array.isArray(logos)) return null;
     const logo = logos.find((l) => l.rel?.includes(rel));
-    return logo?.href || null;
+    const href = logo?.href || null;
+    return href ? this.flagResolver.resolveFlagUrl(href) : null;
   }
 }
