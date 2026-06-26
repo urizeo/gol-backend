@@ -134,4 +134,24 @@ export class MatchesGateway
     }
     this.server.emit('matches:play', { matchId, play });
   }
+
+  emitMatchStarted(matchId: number, data: Match): void {
+    this.logger.log(`Emitting match:started for match ${matchId}`);
+    this.server.emit('match:started', { matchId, ...data });
+  }
+
+  emitGoalScored(matchId: number, play: MatchPlay, matchData: Match): void {
+    this.logger.log(`Emitting goal:scored for match ${matchId}`);
+    this.server.emit('goal:scored', {
+      matchId,
+      play,
+      match: {
+        homeScore: matchData.homeScore,
+        awayScore: matchData.awayScore,
+        homeTeam: matchData.homeTeam,
+        awayTeam: matchData.awayTeam,
+        displayClock: matchData.displayClock,
+      },
+    });
+  }
 }

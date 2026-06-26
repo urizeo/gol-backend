@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { MatchesGateway } from './matches.gateway';
 import { MatchRepository } from '../etl/load/match.repository';
 import { MatchPlay } from '../entities/match-play.entity';
+import { Match } from '../entities/match.entity';
 
 interface TimelineBufferItem {
   play: MatchPlay;
@@ -27,6 +28,11 @@ export class LivePlayEmitterService implements OnModuleDestroy {
   onNewPlays(matchId: number, plays: MatchPlay[]): void {
     if (plays.length === 0) return;
 
+    const goalPlays = plays.filter((p) => p.scoringPlay);
+    if (goalPlays.length > 0) {
+      void this.emitGoalEvents(matchId, goalPlays);
+    }
+
     const rawClients = this.gateway.getRawSubscribers(matchId);
     const timelineClients = this.gateway.getTimelineSubscribers(matchId);
 
@@ -37,6 +43,10 @@ export class LivePlayEmitterService implements OnModuleDestroy {
     if (timelineClients.size > 0) {
       this.bufferTimelinePlays(matchId, plays);
     }
+  }
+
+  emitMatchStarted(matchId: number, match: Match): void {
+    this.gateway.emitMatchStarted(matchId, match);
   }
 
   clearBuffer(matchId: number): void {
@@ -55,6 +65,24 @@ export class LivePlayEmitterService implements OnModuleDestroy {
   ): void {
     for (const play of plays) {
       this.gateway.emitNewPlay(matchId, play, clients);
+    }
+  }
+
+  private async emitGoalEvents(
+    matchId: number,
+    goalPlays: MatchPlay[],
+  ): Promise<void> {
+    try {
+      const match = await this.matchRepo.findById(matchId);
+      if (!match) return;
+      for (const play of goalPlays) {
+        this.gateway.emitGoalScored(matchId, play, match);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to emit goal event for match ${matchId}: ${message}`,
+      );
     }
   }
 

@@ -97,6 +97,13 @@ export class EtlOrchestrator {
       const liveIds = new Set(liveMatches.map((m) => m.id));
 
       for (const match of liveMatches) {
+        if (!this.previouslyLiveMatchIds.has(match.id)) {
+          this.logger.log(`Match ${match.id} just went live: ${match.name}`);
+          this.livePlayEmitter.emitMatchStarted(match.id, match);
+        }
+      }
+
+      for (const match of liveMatches) {
         const newPlays = await this.syncLivePlays(match.id);
         if (newPlays.length > 0) {
           this.livePlayEmitter.onNewPlays(match.id, newPlays);
