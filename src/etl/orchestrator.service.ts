@@ -12,6 +12,7 @@ import { PlayerRepository } from './load/player.repository';
 import { GroupRepository } from './load/group.repository';
 import { MatchRepository } from './load/match.repository';
 import { PlayRepository } from './load/play.repository';
+import { MatchEventRepository } from './load/match-event.repository';
 import { LivePlayEmitterService } from '../matches/live-play-emitter.service';
 import { MatchPlay } from '../entities/match-play.entity';
 import { Match } from '../entities/match.entity';
@@ -36,6 +37,7 @@ export class EtlOrchestrator {
     private groupRepo: GroupRepository,
     private matchRepo: MatchRepository,
     private playRepo: PlayRepository,
+    private matchEventRepo: MatchEventRepository,
     private livePlayEmitter: LivePlayEmitterService,
   ) {
     this.fullSyncIntervalMs = this.config.get<number>(
@@ -107,6 +109,15 @@ export class EtlOrchestrator {
         const newPlays = await this.syncLivePlays(match.id);
         if (newPlays.length > 0) {
           this.livePlayEmitter.onNewPlays(match.id, newPlays);
+          const newEvents = await this.matchEventRepo.syncFromPlays(
+            match.id,
+            newPlays,
+          );
+          if (newEvents > 0) {
+            this.logger.debug(
+              `Synced ${newEvents} new events for match ${match.id}`,
+            );
+          }
         }
       }
 

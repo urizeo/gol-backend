@@ -154,4 +154,19 @@ export class MatchesGateway
       },
     });
   }
+
+  emitGoalTemp(matchId: number, play: MatchPlay, matchData: Match): void {
+    this.logger.log(`Emitting goal:temp for match ${matchId}`);
+    this.server.emit('goal:temp', {
+      matchId,
+      play,
+      match: {
+        homeScore: matchData.homeScore,
+        awayScore: matchData.awayScore,
+        homeTeam: matchData.homeTeam,
+        awayTeam: matchData.awayTeam,
+        displayClock: matchData.displayClock,
+      },
+    });
+  }
 }

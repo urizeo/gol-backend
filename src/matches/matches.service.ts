@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MatchRepository } from '../etl/load/match.repository';
 import { PlayRepository } from '../etl/load/play.repository';
+import { MatchEventRepository } from '../etl/load/match-event.repository';
 import { Match } from '../entities/match.entity';
 import { MatchPlay } from '../entities/match-play.entity';
+import { MatchEvent } from '../entities/match-event.entity';
 
 @Injectable()
 export class MatchesService {
@@ -11,6 +13,7 @@ export class MatchesService {
   constructor(
     private matchRepo: MatchRepository,
     private playRepo: PlayRepository,
+    private matchEventRepo: MatchEventRepository,
   ) {}
 
   async findAll(status?: string, date?: string): Promise<Match[]> {
@@ -35,6 +38,10 @@ export class MatchesService {
       return this.playRepo.findSignificantPlays(matchId);
     }
     return this.playRepo.findByMatchId(matchId);
+  }
+
+  async findEvents(matchId: number): Promise<MatchEvent[]> {
+    return this.matchEventRepo.findByMatchId(matchId);
   }
 
   async findLive(): Promise<Match[]> {

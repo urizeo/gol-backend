@@ -33,6 +33,11 @@ export class LivePlayEmitterService implements OnModuleDestroy {
       void this.emitGoalEvents(matchId, goalPlays);
     }
 
+    const tempGoalPlays = plays.filter((p) => p.typeSlug === 'temp-goal');
+    if (tempGoalPlays.length > 0) {
+      void this.emitTempGoalEvents(matchId, tempGoalPlays);
+    }
+
     const rawClients = this.gateway.getRawSubscribers(matchId);
     const timelineClients = this.gateway.getTimelineSubscribers(matchId);
 
@@ -82,6 +87,24 @@ export class LivePlayEmitterService implements OnModuleDestroy {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `Failed to emit goal event for match ${matchId}: ${message}`,
+      );
+    }
+  }
+
+  private async emitTempGoalEvents(
+    matchId: number,
+    tempPlays: MatchPlay[],
+  ): Promise<void> {
+    try {
+      const match = await this.matchRepo.findById(matchId);
+      if (!match) return;
+      for (const play of tempPlays) {
+        this.gateway.emitGoalTemp(matchId, play, match);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to emit temp goal event for match ${matchId}: ${message}`,
       );
     }
   }

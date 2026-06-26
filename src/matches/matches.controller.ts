@@ -52,4 +52,13 @@ export class MatchesController {
   ) {
     return this.matchesService.findPlays(id, significant === 'true');
   }
+
+  @Get(':id/events')
+  @ApiOperation({
+    summary:
+      'Get match events (goals, cards, subs) — persists after match ends',
+  })
+  async findEvents(@Param('id', ParseIntPipe) id: number) {
+    return this.matchesService.findEvents(id);
+  }
 }

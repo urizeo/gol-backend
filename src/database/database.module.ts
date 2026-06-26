@@ -6,6 +6,7 @@ import { Player } from '../entities/player.entity';
 import { Group } from '../entities/group.entity';
 import { Match } from '../entities/match.entity';
 import { MatchPlay } from '../entities/match-play.entity';
+import { MatchEvent } from '../entities/match-event.entity';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { MatchPlay } from '../entities/match-play.entity';
       useFactory: (config: ConfigService) => ({
         type: 'better-sqlite3',
         database: config.get<string>('DB_PATH', './data/scoreboard.db'),
-        entities: [Team, Player, Group, Match, MatchPlay],
+        entities: [Team, Player, Group, Match, MatchPlay, MatchEvent],
         synchronize: true,
       }),
     }),
