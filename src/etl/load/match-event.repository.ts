@@ -135,4 +135,33 @@ export class MatchEventRepository {
 
     return events.length;
   }
+
+  async upgradeTempGoals(
+    matchId: number,
+    confirmedPlays: MatchPlay[],
+  ): Promise<number> {
+    let upgraded = 0;
+    for (const play of confirmedPlays) {
+      if (play.typeSlug !== 'goal') continue;
+
+      const where: Record<string, unknown> = {
+        matchId,
+        type: 'temp_goal',
+        clockValue: play.clockValue,
+      };
+      if (play.athleteId != null) where.playerId = play.athleteId;
+
+      const existing = await this.repo.findOne({ where });
+      if (existing) {
+        await this.repo.update(existing.id, { type: 'goal' });
+        upgraded++;
+      }
+    }
+    if (upgraded > 0) {
+      this.logger.debug(
+        `Upgraded ${upgraded} temp_goal(s) to goal for match ${matchId}`,
+      );
+    }
+    return upgraded;
+  }
 }

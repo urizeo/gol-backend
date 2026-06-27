@@ -106,7 +106,7 @@ export class EtlOrchestrator {
       }
 
       for (const match of liveMatches) {
-        const newPlays = await this.syncLivePlays(match.id);
+        const { newPlays, processedIds } = await this.syncLivePlays(match.id);
         if (newPlays.length > 0) {
           this.livePlayEmitter.onNewPlays(match.id, newPlays);
           const newEvents = await this.matchEventRepo.syncFromPlays(
@@ -116,6 +116,25 @@ export class EtlOrchestrator {
           if (newEvents > 0) {
             this.logger.debug(
               `Synced ${newEvents} new events for match ${match.id}`,
+            );
+          }
+        }
+
+        // Detect confirmed temp-goals: existing plays whose typeSlug changed to 'goal'
+        const maxPlayId = await this.playRepo.findMaxPlayId(match.id);
+        const existingIds = processedIds.filter((id) => id <= maxPlayId);
+        if (existingIds.length > 0) {
+          const existingPlays = await this.playRepo.findExistingPlays(
+            match.id,
+            existingIds,
+          );
+          const confirmedPlays = existingPlays.filter(
+            (p) => p.typeSlug === 'goal',
+          );
+          if (confirmedPlays.length > 0) {
+            await this.matchEventRepo.upgradeTempGoals(
+              match.id,
+              confirmedPlays,
             );
           }
         }
@@ -312,8 +331,11 @@ export class EtlOrchestrator {
     this.logger.log(`Synced ${totalMatches} total tournament matches`);
   }
 
-  private async syncLivePlays(matchId: number): Promise<MatchPlay[]> {
+  private async syncLivePlays(
+    matchId: number,
+  ): Promise<{ newPlays: MatchPlay[]; processedIds: number[] }> {
     let newPlays: MatchPlay[] = [];
+    const processedIds: number[] = [];
     try {
       const maxPlayId = await this.playRepo.findMaxPlayId(matchId);
 
@@ -324,6 +346,8 @@ export class EtlOrchestrator {
         const rawPlays = await this.coreApi.getPlays(matchId, page);
         const items = rawPlays?.items || [];
         const allPlays = this.playTransformer.transformMany(items, matchId);
+
+        processedIds.push(...allPlays.map((p) => p.id));
 
         const pageNewPlays =
           maxPlayId > 0 ? allPlays.filter((p) => p.id > maxPlayId) : allPlays;
@@ -345,6 +369,6 @@ export class EtlOrchestrator {
         `Failed to sync plays for match ${matchId}: ${error.message}`,
       );
     }
-    return newPlays;
+    return { newPlays, processedIds };
   }
 }

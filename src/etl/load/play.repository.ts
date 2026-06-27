@@ -94,6 +94,20 @@ export class PlayRepository {
     });
   }
 
+  async findExistingPlays(
+    matchId: number,
+    playIds: number[],
+  ): Promise<MatchPlay[]> {
+    if (playIds.length === 0) return [];
+    return this.repo
+      .createQueryBuilder('play')
+      .leftJoinAndSelect('play.athlete', 'athlete')
+      .leftJoinAndSelect('play.team', 'team')
+      .where('play.matchId = :matchId', { matchId })
+      .andWhere('play.id IN (:...playIds)', { playIds })
+      .getMany();
+  }
+
   async deletePlaysForEndedMatches(): Promise<void> {
     const result = await this.repo.query(
       'DELETE FROM match_plays WHERE matchId IN (SELECT id FROM matches WHERE statusState = ?)',
