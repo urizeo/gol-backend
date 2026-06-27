@@ -113,6 +113,8 @@ export class EtlOrchestrator {
             await this.matchEventRepo.syncFromPlays(match.id, significant);
             await this.matchEventRepo.upgradeTempGoals(match.id, significant);
           }
+          // Emit goal:scored, goal:temp, play:new, and buffer timeline plays
+          this.livePlayEmitter.onNewPlays(match.id, newPlays);
         }
 
         // Emit play:updated events for modified significant plays (e.g. temp-goal confirmed)
