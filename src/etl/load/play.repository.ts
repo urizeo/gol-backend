@@ -108,6 +108,26 @@ export class PlayRepository {
       .getMany();
   }
 
+  async deleteOrphanedPlays(
+    matchId: number,
+    apiPlayIds: number[],
+  ): Promise<number> {
+    if (apiPlayIds.length === 0) return 0;
+    const result = await this.repo
+      .createQueryBuilder()
+      .delete()
+      .where('matchId = :matchId', { matchId })
+      .andWhere('id NOT IN (:...apiPlayIds)', { apiPlayIds })
+      .execute();
+    const deleted = result?.affected || 0;
+    if (deleted > 0) {
+      this.logger.log(
+        `Deleted ${deleted} orphaned plays for match ${matchId}`,
+      );
+    }
+    return deleted;
+  }
+
   async deletePlaysForEndedMatches(): Promise<void> {
     const result = await this.repo.query(
       'DELETE FROM match_plays WHERE matchId IN (SELECT id FROM matches WHERE statusState = ?)',

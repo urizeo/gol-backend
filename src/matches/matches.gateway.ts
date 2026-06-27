@@ -135,6 +135,17 @@ export class MatchesGateway
     this.server.emit('matches:play', { matchId, play });
   }
 
+  emitPlayUpdated(matchId: number, play: MatchPlay, clients?: Set<string>): void {
+    const room = `match:${matchId}`;
+    if (clients && clients.size > 0) {
+      for (const clientId of clients) {
+        this.server.to(clientId).emit('play:updated', { matchId, play });
+      }
+    } else {
+      this.server.to(room).emit('play:updated', { matchId, play });
+    }
+  }
+
   emitMatchStarted(matchId: number, data: Match): void {
     this.logger.log(`Emitting match:started for match ${matchId}`);
     this.server.emit('match:started', { matchId, ...data });
@@ -142,7 +153,8 @@ export class MatchesGateway
 
   emitGoalScored(matchId: number, play: MatchPlay, matchData: Match): void {
     this.logger.log(`Emitting goal:scored for match ${matchId}`);
-    this.server.emit('goal:scored', {
+    const room = `match:${matchId}`;
+    this.server.to(room).emit('goal:scored', {
       matchId,
       play,
       match: {
@@ -157,7 +169,8 @@ export class MatchesGateway
 
   emitGoalTemp(matchId: number, play: MatchPlay, matchData: Match): void {
     this.logger.log(`Emitting goal:temp for match ${matchId}`);
-    this.server.emit('goal:temp', {
+    const room = `match:${matchId}`;
+    this.server.to(room).emit('goal:temp', {
       matchId,
       play,
       match: {

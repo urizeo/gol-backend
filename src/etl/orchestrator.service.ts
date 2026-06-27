@@ -106,36 +106,25 @@ export class EtlOrchestrator {
       }
 
       for (const match of liveMatches) {
-        const { newPlays, processedIds } = await this.syncLivePlays(match.id);
+        const { newPlays, modifiedPlays, processedIds } = await this.syncLivePlays(match.id);
         if (newPlays.length > 0) {
-          this.livePlayEmitter.onNewPlays(match.id, newPlays);
-          const newEvents = await this.matchEventRepo.syncFromPlays(
-            match.id,
-            newPlays,
-          );
-          if (newEvents > 0) {
-            this.logger.debug(
-              `Synced ${newEvents} new events for match ${match.id}`,
-            );
+          const significant = newPlays.filter((p) => this.isSignificantPlay(p));
+          if (significant.length > 0) {
+            await this.matchEventRepo.syncFromPlays(match.id, significant);
+            await this.matchEventRepo.upgradeTempGoals(match.id, significant);
           }
         }
 
-        // Detect confirmed temp-goals: existing plays whose typeSlug changed to 'goal'
-        const maxPlayId = await this.playRepo.findMaxPlayId(match.id);
-        const existingIds = processedIds.filter((id) => id <= maxPlayId);
-        if (existingIds.length > 0) {
-          const existingPlays = await this.playRepo.findExistingPlays(
-            match.id,
-            existingIds,
-          );
-          const confirmedPlays = existingPlays.filter(
-            (p) => p.typeSlug === 'goal',
-          );
-          if (confirmedPlays.length > 0) {
-            await this.matchEventRepo.upgradeTempGoals(
-              match.id,
-              confirmedPlays,
-            );
+        // Emit play:updated events for modified significant plays (e.g. temp-goal confirmed)
+        if (modifiedPlays.length > 0) {
+          const significantModified = modifiedPlays.filter((p) => this.isSignificantPlay(p));
+          // Upgrade temp_goal events when ESPN confirms a goal
+          const confirmedGoals = modifiedPlays.filter((p) => p.typeSlug === 'goal');
+          if (confirmedGoals.length > 0) {
+            await this.matchEventRepo.upgradeTempGoals(match.id, confirmedGoals);
+          }
+          for (const play of significantModified) {
+            this.livePlayEmitter.onPlayUpdated(match.id, play);
           }
         }
       }
@@ -331,11 +320,16 @@ export class EtlOrchestrator {
     this.logger.log(`Synced ${totalMatches} total tournament matches`);
   }
 
-  private async syncLivePlays(
-    matchId: number,
-  ): Promise<{ newPlays: MatchPlay[]; processedIds: number[] }> {
+  private async syncLivePlays(matchId: number): Promise<{
+    newPlays: MatchPlay[];
+    modifiedPlays: MatchPlay[];
+    processedIds: number[];
+    paginationComplete: boolean;
+  }> {
     let newPlays: MatchPlay[] = [];
+    let modifiedPlays: MatchPlay[] = [];
     const processedIds: number[] = [];
+    let paginationComplete = false;
     try {
       const maxPlayId = await this.playRepo.findMaxPlayId(matchId);
 
@@ -352,6 +346,33 @@ export class EtlOrchestrator {
         const pageNewPlays =
           maxPlayId > 0 ? allPlays.filter((p) => p.id > maxPlayId) : allPlays;
 
+        // Detect modified plays (existing play with changed fields)
+        if (maxPlayId > 0) {
+          const existingPlays = allPlays.filter(
+            (p) => p.id <= maxPlayId && p.id > 0,
+          );
+          if (existingPlays.length > 0) {
+            const existingIds = existingPlays.map((p) => p.id);
+            const dbPlays = await this.playRepo.findExistingPlays(
+              matchId,
+              existingIds,
+            );
+            const dbPlayMap = new Map(dbPlays.map((p) => [p.id, p]));
+            for (const apiPlay of existingPlays) {
+              const dbPlay = dbPlayMap.get(apiPlay.id);
+              if (dbPlay) {
+                const isModified =
+                  apiPlay.typeSlug !== dbPlay.typeSlug ||
+                  apiPlay.scoringPlay !== dbPlay.scoringPlay ||
+                  apiPlay.text !== dbPlay.text;
+                if (isModified) {
+                  modifiedPlays.push(apiPlay as unknown as MatchPlay);
+                }
+              }
+            }
+          }
+        }
+
         if (pageNewPlays.length > 0) {
           await this.playRepo.upsertMany(pageNewPlays);
           this.logger.debug(
@@ -363,12 +384,34 @@ export class EtlOrchestrator {
         page++;
       }
 
+      paginationComplete = true;
+
+      // Delete orphaned plays (removed by ESPN) only if all pages were fetched
+      if (processedIds.length > 0) {
+        await this.playRepo.deleteOrphanedPlays(matchId, processedIds);
+      }
+
+      // Update modified plays in DB
+      if (modifiedPlays.length > 0) {
+        await this.playRepo.upsertMany(modifiedPlays);
+      }
+
       newPlays = await this.playRepo.findNewPlays(matchId, maxPlayId);
     } catch (error: any) {
       this.logger.warn(
         `Failed to sync plays for match ${matchId}: ${error.message}`,
       );
     }
-    return { newPlays, processedIds };
+    return { newPlays, modifiedPlays, processedIds, paginationComplete };
+  }
+
+  private isSignificantPlay(play: { typeSlug?: string; scoringPlay?: boolean; yellowCard?: boolean; redCard?: boolean }): boolean {
+    return (
+      play.scoringPlay === true ||
+      play.typeSlug === 'temp-goal' ||
+      play.yellowCard === true ||
+      play.redCard === true ||
+      play.typeSlug === 'substitution'
+    );
   }
 }

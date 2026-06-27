@@ -6,6 +6,7 @@ import { MatchPlay } from '../../entities/match-play.entity';
 
 export interface TransformedEvent {
   matchId: number;
+  playId: number;
   type: string;
   clockDisplay?: string;
   clockValue: number;
@@ -31,15 +32,9 @@ export class MatchEventRepository {
 
   async upsertMany(events: TransformedEvent[]): Promise<void> {
     for (const event of events) {
-      const where: Record<string, unknown> = {
-        matchId: event.matchId,
-        type: event.type,
-        clockValue: event.clockValue,
-      };
-      if (event.playerId != null) {
-        where.playerId = event.playerId;
-      }
-      const existing = await this.repo.findOne({ where });
+      const existing = await this.repo.findOne({
+        where: { matchId: event.matchId, playId: event.playId },
+      });
       if (!existing) {
         await this.repo.save(event);
       }
@@ -54,17 +49,8 @@ export class MatchEventRepository {
     });
   }
 
-  async existsForPlay(
-    matchId: number,
-    type: string,
-    clockValue: number,
-    playerId?: number,
-  ): Promise<boolean> {
-    const where: Record<string, unknown> = { matchId, type, clockValue };
-    if (playerId != null) {
-      where.playerId = playerId;
-    }
-    const count = await this.repo.count({ where });
+  async existsForPlay(matchId: number, playId: number): Promise<boolean> {
+    const count = await this.repo.count({ where: { matchId, playId } });
     return count > 0;
   }
 
@@ -97,6 +83,7 @@ export class MatchEventRepository {
 
     return {
       matchId: play.matchId,
+      playId: play.id,
       type,
       clockDisplay: play.clockDisplay,
       clockValue: play.clockValue,
@@ -118,12 +105,7 @@ export class MatchEventRepository {
       const event = this.transformPlayToEvent(play);
       if (!event) continue;
 
-      const exists = await this.existsForPlay(
-        matchId,
-        event.type,
-        event.clockValue,
-        event.playerId,
-      );
+      const exists = await this.existsForPlay(matchId, event.playId);
       if (!exists) {
         events.push(event);
       }
@@ -144,14 +126,9 @@ export class MatchEventRepository {
     for (const play of confirmedPlays) {
       if (play.typeSlug !== 'goal') continue;
 
-      const where: Record<string, unknown> = {
-        matchId,
-        type: 'temp_goal',
-        clockValue: play.clockValue,
-      };
-      if (play.athleteId != null) where.playerId = play.athleteId;
-
-      const existing = await this.repo.findOne({ where });
+      const existing = await this.repo.findOne({
+        where: { matchId, playId: play.id, type: 'temp_goal' },
+      });
       if (existing) {
         await this.repo.update(existing.id, { type: 'goal' });
         upgraded++;

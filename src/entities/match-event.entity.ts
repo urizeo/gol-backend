@@ -71,6 +71,9 @@ export class MatchEvent {
   @Column({ nullable: true })
   wallclock: string;
 
+  @Column({ nullable: true })
+  playId: number;
+
   @UpdateDateColumn()
   updatedAt: Date;
 

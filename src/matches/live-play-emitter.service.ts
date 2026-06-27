@@ -50,6 +50,10 @@ export class LivePlayEmitterService implements OnModuleDestroy {
     }
   }
 
+  onPlayUpdated(matchId: number, play: MatchPlay): void {
+    this.gateway.emitPlayUpdated(matchId, play);
+  }
+
   emitMatchStarted(matchId: number, match: Match): void {
     this.gateway.emitMatchStarted(matchId, match);
   }
