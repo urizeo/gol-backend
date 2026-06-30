@@ -42,7 +42,7 @@ export class LivePlayEmitterService implements OnModuleDestroy {
     const timelineClients = this.gateway.getTimelineSubscribers(matchId);
 
     if (rawClients.size > 0) {
-      this.emitRawPlays(matchId, plays, rawClients);
+      void this.emitRawPlays(matchId, plays, rawClients);
     }
 
     if (timelineClients.size > 0) {
@@ -50,8 +50,19 @@ export class LivePlayEmitterService implements OnModuleDestroy {
     }
   }
 
-  onPlayUpdated(matchId: number, play: MatchPlay): void {
+  async onPlayUpdated(matchId: number, play: MatchPlay): Promise<void> {
     this.gateway.emitPlayUpdated(matchId, play);
+    try {
+      const match = await this.matchRepo.findById(matchId);
+      if (match) {
+        this.gateway.emitMatchUpdate(matchId, match);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to emit match update after play:updated for match ${matchId}: ${message}`,
+      );
+    }
   }
 
   emitMatchStarted(matchId: number, match: Match): void {
@@ -67,13 +78,24 @@ export class LivePlayEmitterService implements OnModuleDestroy {
     this.stopTimer();
   }
 
-  private emitRawPlays(
+  private async emitRawPlays(
     matchId: number,
     plays: MatchPlay[],
     clients: Set<string>,
-  ): void {
+  ): Promise<void> {
     for (const play of plays) {
       this.gateway.emitNewPlay(matchId, play, clients);
+    }
+    try {
+      const match = await this.matchRepo.findById(matchId);
+      if (match) {
+        this.gateway.emitMatchUpdate(matchId, match, clients);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to emit match update for raw clients in match ${matchId}: ${message}`,
+      );
     }
   }
 

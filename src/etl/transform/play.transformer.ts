@@ -22,6 +22,20 @@ export interface RawEspnPlay {
   }>;
 }
 
+const REF_ID_RE = /\/(\d+)(?:\?|$)/;
+
+function extractIdFromRef(
+  obj: { $ref?: string; id?: number | string } | undefined,
+): number | undefined {
+  if (!obj) return undefined;
+  if (obj.id != null) return Number(obj.id);
+  if (obj.$ref) {
+    const match = obj.$ref.match(REF_ID_RE);
+    return match ? parseInt(match[1], 10) : undefined;
+  }
+  return undefined;
+}
+
 export interface TransformedPlay {
   id: number;
   matchId: number;
@@ -72,10 +86,8 @@ export class PlayTransformer {
       penaltyKick: raw.penaltyKick ?? false,
       ownGoal: raw.ownGoal ?? false,
       wallclock: raw.wallclock || undefined,
-      athleteId: participant?.athlete?.id
-        ? Number(participant.athlete.id)
-        : undefined,
-      teamId: participant?.team?.id ? Number(participant.team.id) : undefined,
+      athleteId: extractIdFromRef(participant?.athlete),
+      teamId: extractIdFromRef(participant?.team),
       jersey: participant?.jersey || undefined,
     };
   }

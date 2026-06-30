@@ -135,7 +135,11 @@ export class MatchesGateway
     this.server.emit('matches:play', { matchId, play });
   }
 
-  emitPlayUpdated(matchId: number, play: MatchPlay, clients?: Set<string>): void {
+  emitPlayUpdated(
+    matchId: number,
+    play: MatchPlay,
+    clients?: Set<string>,
+  ): void {
     const room = `match:${matchId}`;
     if (clients && clients.size > 0) {
       for (const clientId of clients) {

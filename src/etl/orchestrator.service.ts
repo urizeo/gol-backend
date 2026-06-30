@@ -106,7 +106,8 @@ export class EtlOrchestrator {
       }
 
       for (const match of liveMatches) {
-        const { newPlays, modifiedPlays, processedIds } = await this.syncLivePlays(match.id);
+        const { newPlays, modifiedPlays, processedIds } =
+          await this.syncLivePlays(match.id);
         if (newPlays.length > 0) {
           const significant = newPlays.filter((p) => this.isSignificantPlay(p));
           if (significant.length > 0) {
@@ -119,11 +120,18 @@ export class EtlOrchestrator {
 
         // Emit play:updated events for modified significant plays (e.g. temp-goal confirmed)
         if (modifiedPlays.length > 0) {
-          const significantModified = modifiedPlays.filter((p) => this.isSignificantPlay(p));
+          const significantModified = modifiedPlays.filter((p) =>
+            this.isSignificantPlay(p),
+          );
           // Upgrade temp_goal events when ESPN confirms a goal
-          const confirmedGoals = modifiedPlays.filter((p) => p.typeSlug === 'goal');
+          const confirmedGoals = modifiedPlays.filter(
+            (p) => p.typeSlug === 'goal',
+          );
           if (confirmedGoals.length > 0) {
-            await this.matchEventRepo.upgradeTempGoals(match.id, confirmedGoals);
+            await this.matchEventRepo.upgradeTempGoals(
+              match.id,
+              confirmedGoals,
+            );
           }
           for (const play of significantModified) {
             this.livePlayEmitter.onPlayUpdated(match.id, play);
@@ -329,7 +337,7 @@ export class EtlOrchestrator {
     paginationComplete: boolean;
   }> {
     let newPlays: MatchPlay[] = [];
-    let modifiedPlays: MatchPlay[] = [];
+    const modifiedPlays: MatchPlay[] = [];
     const processedIds: number[] = [];
     let paginationComplete = false;
     try {
@@ -407,7 +415,12 @@ export class EtlOrchestrator {
     return { newPlays, modifiedPlays, processedIds, paginationComplete };
   }
 
-  private isSignificantPlay(play: { typeSlug?: string; scoringPlay?: boolean; yellowCard?: boolean; redCard?: boolean }): boolean {
+  private isSignificantPlay(play: {
+    typeSlug?: string;
+    scoringPlay?: boolean;
+    yellowCard?: boolean;
+    redCard?: boolean;
+  }): boolean {
     return (
       play.scoringPlay === true ||
       play.typeSlug === 'temp-goal' ||

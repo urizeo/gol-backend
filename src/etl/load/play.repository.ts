@@ -121,9 +121,7 @@ export class PlayRepository {
       .execute();
     const deleted = result?.affected || 0;
     if (deleted > 0) {
-      this.logger.log(
-        `Deleted ${deleted} orphaned plays for match ${matchId}`,
-      );
+      this.logger.log(`Deleted ${deleted} orphaned plays for match ${matchId}`);
     }
     return deleted;
   }
