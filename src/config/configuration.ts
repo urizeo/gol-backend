@@ -13,4 +13,8 @@ export default () => ({
   ),
   espnRequestDelayMs: parseInt(process.env.ESPN_REQUEST_DELAY_MS || '200', 10),
   timelineDelayMs: parseInt(process.env.TIMELINE_DELAY_MS || '10000', 10),
+  throttler: {
+    ttl: parseInt(process.env.THROTTLE_TTL_MS || '1000', 10),
+    limit: parseInt(process.env.THROTTLE_LIMIT || '10', 10),
+  },
 });
