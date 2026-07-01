@@ -57,6 +57,7 @@
   "cmr": "cm",
   "cpv": "cv",
   "cod": "cd",
+  "rdc": "cd",
   "cgo": "cg",
   "civ": "ci",
   "egy": "eg",
@@ -112,6 +113,7 @@
   "ksa": "sa",
   "sgp": "sg",
   "kor": "kr",
+  "kors": "kr",
   "syr": "sy",
   "tpe": "tw",
   "taj": "tj",
@@ -144,6 +146,8 @@
   "ber": "bm",
   "cay": "ky",
   "cur": "cw",
+  "cuw": "cw",
+  "11678": "cw",
   "gdl": "gp",
   "mtq": "mq",
   "pur": "pr",
@@ -157,5 +161,6 @@
   "tah": "pf",
   "ton": "to",
   "van": "vu",
-  "sam": "ws"
+  "sam": "ws",
+  "uru": "uy"
 }

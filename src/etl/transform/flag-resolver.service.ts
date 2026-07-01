@@ -3,7 +3,7 @@ import * as fifaToIso from './fifa-to-iso.json';
 
 const FLAGCDN_BASE = 'https://flagcdn.com/w160';
 const ESPN_COUNTRIES_PATTERN =
-  /espncdn\.com\/i\/teamlogos\/countries\/\d+\/(\w+)\.png/;
+  /espncdn\.com\/i\/teamlogos\/countries\/\d+(?:-dark)?\/(\w+)\.png/;
 
 @Injectable()
 export class FlagResolverService {
